@@ -1,7 +1,8 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Depends, Request
 from .supa_config import supabase_client
 from .models import LoginRequest, PromptRequest
 from .open_ai import open_ai_client
+from .auth import authenticate_user
 
 
 app = FastAPI()
@@ -36,10 +37,10 @@ async def logout():
         
         return {"message": "success"}
     except Exception as e:
-        raise HTTPException(status_code=400, detail=str(ec))
+        raise HTTPException(status_code=400, detail=str(e))
 
-@app.post("/ask")
-async def ask(request: PromptRequest):
+@app.post("/ask",dependencies=[Depends(authenticate_user)])
+async def ask(request: Request,body: PromptRequest):
     try:
         response = open_ai_client().chat.completions.create(
             model="gpt-4o-mini",
@@ -47,31 +48,37 @@ async def ask(request: PromptRequest):
                 {"role": "system", "content": "You are a helpful assistant."},
                 {
                     "role": "user",
-                    "content": request.prompt
+                    "content": body.prompt
                 }
             ]
         )
-
+        ai_response = response.choices[0].message.content
+    except Exception as openai_error:
         supabase_client.table("chat_history").insert({
-            "prompt": request.prompt,
-            "response": response.choices[0].message.content,
+            "prompt": body.prompt,
+            "error_message": str(openai_error),
             "model": "gpt-4o-mini",
-            "is_success": 1
+            "is_success": 0,
+            "user_id": request.state.user_id
         }).execute()
-        
-        return response.choices[0].message.content
-    except Exception as e:
-        supabase_client.table("chat_history").insert({
-            "prompt": request.prompt,
-            "error_message": str(e),
-            "model": "gpt-4o-mini",
-            "is_success":0,
-        }).execute()
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=500, detail="Error with OpenAI service.")
+    
 
-@app.get("/history")
-async def history():
+    supabase_client.table("chat_history").insert({
+        "prompt": body.prompt,
+        "response": ai_response,
+        "model": "gpt-4o-mini",
+        "user_id": request.state.user_id
+    }).execute()
+    
+    return ai_response
+
+
+@app.get("/history",dependencies=[Depends(authenticate_user)])
+async def history(request: Request):
     try:
+        user_id = request.state.user_id
+        print("user_id: ", user_id)
         response = supabase_client.table("chat_history").select("*").execute()
         return response
     except Exception as e:
