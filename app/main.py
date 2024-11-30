@@ -51,8 +51,29 @@ async def ask(request: PromptRequest):
                 }
             ]
         )
+
+        supabase_client.table("chat_history").insert({
+            "prompt": request.prompt,
+            "response": response.choices[0].message.content,
+            "model": "gpt-4o-mini",
+            "is_success": 1
+        }).execute()
         
         return response.choices[0].message.content
+    except Exception as e:
+        supabase_client.table("chat_history").insert({
+            "prompt": request.prompt,
+            "error_message": str(e),
+            "model": "gpt-4o-mini",
+            "is_success":0,
+        }).execute()
+        raise HTTPException(status_code=400, detail=str(e))
+
+@app.get("/history")
+async def history():
+    try:
+        response = supabase_client.table("chat_history").select("*").execute()
+        return response
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
     
