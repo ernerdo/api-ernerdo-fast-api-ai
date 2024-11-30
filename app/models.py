@@ -1,5 +1,8 @@
 from pydantic import BaseModel,EmailStr
 
-class LoginUser(BaseModel):
+class LoginRequest(BaseModel):
     email: EmailStr
     password: str
+
+class PromptRequest(BaseModel):
+    prompt: str

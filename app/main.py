@@ -1,6 +1,7 @@
 from fastapi import FastAPI, HTTPException
 from .supa_config import supabase_client
-from .models import LoginUser
+from .models import LoginRequest, PromptRequest
+from .open_ai import open_ai_client
 
 
 app = FastAPI()
@@ -10,10 +11,10 @@ async def read_root():
     return {"message": "Hello, FastAPI with Docker!"}
 
 @app.post("/login")
-async def login(user: LoginUser):
+async def login(request: LoginRequest):
     try:
         response = supabase_client.auth.sign_in_with_password(
-            {"email": user.email, "password": user.password}
+            {"email": request.email, "password": request.password}
         )
         
         return {
@@ -36,4 +37,22 @@ async def logout():
         return {"message": "success"}
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(ec))
+
+@app.post("/ask")
+async def ask(request: PromptRequest):
+    try:
+        response = open_ai_client().chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[
+                {"role": "system", "content": "You are a helpful assistant."},
+                {
+                    "role": "user",
+                    "content": request.prompt
+                }
+            ]
+        )
+        
+        return response.choices[0].message.content
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
     
