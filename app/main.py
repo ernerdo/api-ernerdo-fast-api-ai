@@ -85,8 +85,6 @@ async def ask(request: Request,body: PromptRequest):
 @app.get("/history",dependencies=[Depends(authenticate_user)])
 async def history(request: Request):
     try:
-        user_id = request.state.user_id
-        print("user_id: ", user_id)
         response = supabase_client.table("chat_history").select("*").execute()
         return response
     except Exception as e:
