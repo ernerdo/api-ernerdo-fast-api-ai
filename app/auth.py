@@ -14,6 +14,7 @@ async def authenticate_user(request: Request):
         if not auth or not auth.user:
             raise HTTPException(status_code=401, detail="Invalid user token")
         request.state.user_id = auth.user.id
+        supabase_client.postgrest.auth(token)
 
     except Exception as e:
         print(e)
