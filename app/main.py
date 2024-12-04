@@ -71,10 +71,10 @@ async def ask(request: Request,body: PromptRequest):
         }).execute()
         raise HTTPException(status_code=500, detail="Error with OpenAI service.")
     
-
     supabase_client.table("chat_history").insert({
         "prompt": body.prompt,
-        "response": ai_response,
+        "response": response.model_dump_json(),
+        "message": ai_response,
         "model": "gpt-4o-mini",
         "user_id": request.state.user_id
     }).execute()
