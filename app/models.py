@@ -6,3 +6,8 @@ class LoginRequest(BaseModel):
 
 class PromptRequest(BaseModel):
     prompt: str
+
+class ContactRequest(BaseModel):
+    name: str
+    email: EmailStr
+    message: str
