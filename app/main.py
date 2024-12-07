@@ -1,8 +1,10 @@
 from fastapi import FastAPI, HTTPException, Depends, Request
 from .supa_config import supabase_client
-from .models import LoginRequest, PromptRequest
+from .models import LoginRequest, PromptRequest, ContactRequest
 from .open_ai import open_ai_client
 from .auth import authenticate_user
+from .db import db
+from datetime import datetime
 
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -87,6 +89,19 @@ async def history(request: Request):
     try:
         response = supabase_client.table("chat_history").select("*").execute()
         return response
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+@app.post("/contact")
+async def contact(body: ContactRequest):
+    try:
+        response = await db["contacts"].insert_one({
+            "name": body.name,
+            "email": body.email,
+            "message": body.message,
+            "created_at": datetime.utcnow()
+        })
+        return {"message": "Contact saved successfully", "id": str(response.inserted_id)}
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
     
