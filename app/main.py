@@ -27,6 +27,7 @@ async def login(request: LoginRequest):
         response = supabase_client.auth.sign_in_with_password(
             {"email": request.email, "password": request.password}
         )
+        response_credits = supabase_client.table("user_credits").select("credits").eq('user_id',response.user.id).limit(1).single().execute()
         
         return {
             "access_token": response.session.access_token,
@@ -34,6 +35,7 @@ async def login(request: LoginRequest):
             "user": {
                 "id": response.user.id,
                 "email": response.user.email,
+                "credits": response_credits.data["credits"]
             },
         }
     except Exception as e:
@@ -80,8 +82,12 @@ async def ask(request: Request,body: PromptRequest):
         "model": "gpt-4o-mini",
         "user_id": request.state.user_id
     }).execute()
+    response = supabase_client.rpc("decrement_credits", {"_user_id": request.state.user_id}).execute()
     
-    return ai_response
+    return {
+        "message": ai_response,
+        "credits": response.data
+    }
 
 
 @app.get("/history",dependencies=[Depends(authenticate_user)])
