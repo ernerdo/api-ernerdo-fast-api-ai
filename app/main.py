@@ -53,6 +53,10 @@ async def logout():
 
 @app.post("/ask",dependencies=[Depends(authenticate_user)])
 async def ask(request: Request,body: PromptRequest):
+    response = supabase_client.rpc("get_credits", {"_user_id": request.state.user_id}).execute()
+    credits = response.data or 0
+    if credits <= 0:
+        raise HTTPException(status_code=400, detail="You don't have enough credits to make a request.")
     try:
         response = open_ai_client().chat.completions.create(
             model="gpt-4o-mini",
